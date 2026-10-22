@@ -9,29 +9,48 @@ import google.generativeai as genai
 # 1. Page Configuration
 # ==============================
 st.set_page_config(
-    page_title="AI Skill Trend Forecaster",
+    page_title="AI Skill Trajectory & Viability Forecaster",
     page_icon="💼",
     layout="wide"
 )
 
-st.title("💼 AI-Powered CV Skill Trend Forecaster")
+st.title("💼 AI-Powered CV Skill Trajectory Forecaster")
 st.caption(
-    "Extract core technical skills from your resume and forecast their future market trajectory "
-    "across global and Southeast Asian tech landscapes using Google Gemini."
+    "Extract core technical skills from your resume and forecast their future market viability "
+    "using an explainable multi-dimensional scoring rubric powered by Google Gemini and deterministic Python calculations."
 )
 
-# Sidebar: Configurations & File Upload
+# Sidebar: Configurations & Secrets Fallback
 st.sidebar.header("Configuration & Upload")
+
+# Safely attempt to read secrets (prevents StreamlitSecretNotFoundError locally)
+try:
+    default_key = st.secrets.get("GEMINI_KEY", "")
+except Exception:
+    default_key = ""
+
 gemini_key = st.sidebar.text_input(
     "Gemini API Key", 
+    value=default_key,
     type="password", 
     help="Enter your Google AI Studio API key (starts with AIzaSy...)"
 )
+
 uploaded_file = st.sidebar.file_uploader(
     "Upload Your Resume / CV", 
     type=["pdf"],
-    help="Please upload a text-selectable PDF resume."
+    help="Upload a text-selectable PDF resume."
 )
+
+# Sidebar: Mathematical Methodology
+with st.sidebar.expander("📐 Deterministic Scoring Formulas"):
+    st.markdown("""
+    **Growth Potential Formula:**
+    $$\\text{Growth} = 0.4 S_{\\text{demand}} + 0.3 S_{\\text{ecosystem}} + 0.3 S_{\\text{premium}}$$
+    
+    **AI Disruption Risk Formula:**
+    $$\\text{AI Risk} = 0.4 R_{\\text{standard}} + 0.4 R_{\\text{tools}} - 0.2 R_{\\text{judgment}}$$
+    """)
 
 # ==============================
 # 2. PDF Text Extraction
@@ -45,13 +64,16 @@ def extract_text_from_pdf(file):
     return text
 
 # ==============================
-# 3. Gemini Forecasting Logic
+# 3. Hybrid AI + Python Forecasting Engine
 # ==============================
 def analyze_skills_with_gemini(cv_text, api_key):
-    """Calls Gemini to extract skills and predict market trajectories."""
+    """
+    Hybrid Architecture:
+    1. Gemini evaluates qualitative sub-dimension scores (0-100).
+    2. Python strictly executes deterministic mathematical formulas.
+    """
     genai.configure(api_key=api_key)
 
-    # Use Google's recommended latest flash model
     target_model = "gemini-3.8-flash"
 
     model = genai.GenerativeModel(
@@ -60,44 +82,86 @@ def analyze_skills_with_gemini(cv_text, api_key):
     )
 
     prompt = f"""
-You are a senior tech recruiter and technology trend analyst specializing in global and Southeast Asian (Singapore, Malaysia, etc.) job markets.
-Analyze the following resume text and perform two tasks:
-1. Extract the 6 to 8 most critical hard technical skills (programming languages, frameworks, cloud platforms, databases, AI/data tools).
-2. Evaluate the future trajectory and viability of each skill for the next 2-3 years based on tech evolution, hiring volume trends, and AI automation risks.
+You are a senior tech talent analyst and workforce economist specializing in global and Southeast Asian job markets.
+Analyze the following resume text and execute two objectives:
 
-You must strictly return a valid JSON object matching the following structure without any markdown code wrappers:
+1. Extract the 6 to 8 most critical hard technical skills (programming languages, frameworks, cloud/DevOps, data/AI tools, specialized software).
+2. For each skill, evaluate the sub-dimension ratings (0 to 100) based on market dynamics for the next 2-3 years:
+
+SUB-DIMENSIONS TO RATE (0 - 100):
+- demand_trajectory: Hiring volume momentum & YoY job postings.
+- ecosystem_alignment: Modern technology stack relevance.
+- salary_premium: Scarcity and compensation leverage.
+- task_standardization: How routine and syntax-bound the tasks are.
+- ai_tool_maturity: Availability of mature generative AI/copilot tools.
+- human_judgment_barrier: Need for physical constraints, architecture, cross-domain judgment.
+
+Return strictly a valid JSON object matching this schema without any markdown wrapping:
 {{
-  "overall_summary": "A concise, objective summary of the candidate's technical profile competitiveness (1-2 sentences).",
+  "overall_summary": "Objective synthesis of the candidate's technical profile competitiveness (1-2 sentences).",
   "skills": [
     {{
-      "name": "Skill Name (e.g., Python, React, AWS)",
-      "growth_score": 85,          // Projected market demand growth score (0-100)
-      "ai_risk": 30,               // Risk of being automated or devalued by AI (0-100, lower is safer)
+      "name": "Skill Name",
       "market_stage": "Rapid Growth", // One of: "Emerging", "Rapid Growth", "Mature & Stable", "Declining"
-      "reason": "Brief rationale behind this forecast (under 25 words)."
+      "growth_breakdown": {{
+        "demand_trajectory": 85,
+        "ecosystem_alignment": 80,
+        "salary_premium": 75
+      }},
+      "ai_risk_breakdown": {{
+        "task_standardization": 45,
+        "ai_tool_maturity": 60,
+        "human_judgment_barrier": 65
+      }},
+      "reason": "Concise justification for this rating (max 25 words)."
     }}
   ],
   "recommended_upskills": [
-    "Recommended high-value skill 1 to complement current stack",
-    "Recommended high-value skill 2",
-    "Recommended high-value skill 3"
+    "High-leverage skill recommendation 1 to future-proof current stack",
+    "High-leverage skill recommendation 2",
+    "High-leverage skill recommendation 3"
   ]
 }}
 
-Resume text:
+Resume Content:
 {cv_text[:4000]}
 """
 
     response = model.generate_content(prompt)
     clean_text = response.text.strip().removeprefix("```json").removesuffix("```").strip()
-    return json.loads(clean_text)
+    data = json.loads(clean_text)
+
+    # ==========================================
+    # 🔥 Deterministic Mathematical Calculation in Python
+    # ==========================================
+    for s in data.get("skills", []):
+        gb = s.get("growth_breakdown", {})
+        ab = s.get("ai_risk_breakdown", {})
+
+        # Formula 1: Growth Potential = 0.40 * Demand + 0.30 * Ecosystem + 0.30 * Premium
+        real_growth = (
+            0.40 * gb.get("demand_trajectory", 50) +
+            0.30 * gb.get("ecosystem_alignment", 50) +
+            0.30 * gb.get("salary_premium", 50)
+        )
+        s["growth_score"] = int(round(max(0, min(100, real_growth))))
+
+        # Formula 2: AI Disruption Risk = 0.40 * Standard + 0.40 * ToolMaturity - 0.20 * HumanBarrier
+        real_risk = (
+            0.40 * ab.get("task_standardization", 50) +
+            0.40 * ab.get("ai_tool_maturity", 50) -
+            0.20 * ab.get("human_judgment_barrier", 50)
+        )
+        s["ai_risk"] = int(round(max(0, min(100, real_risk))))
+
+    return data
 
 # ==============================
 # 4. User Interface & Visualization
 # ==============================
 if uploaded_file and gemini_key:
     if st.button("🚀 Analyze Skills & Forecast Trends", type="primary"):
-        with st.spinner("Gemini is analyzing your resume and modeling future tech trends..."):
+        with st.spinner("Executing hybrid AI assessment and deterministic rubric calculation..."):
             try:
                 cv_text = extract_text_from_pdf(uploaded_file)
                 if not cv_text.strip():
@@ -106,15 +170,15 @@ if uploaded_file and gemini_key:
                     
                 result = analyze_skills_with_gemini(cv_text, gemini_key)
 
-                # Overall Profile Assessment
-                st.info(f"💡 **Profile Assessment:** {result.get('overall_summary')}")
+                # Overall Executive Summary
+                st.info(f"💡 **Executive Profile Assessment:** {result.get('overall_summary')}")
 
                 skills_data = result.get("skills", [])
                 df = pd.DataFrame(skills_data)
 
                 col1, col2 = st.columns([3, 2])
 
-                # Left Column: Quadrant Scatter Plot
+                # Left Column: Strategic Quadrant Scatter Plot
                 with col1:
                     st.markdown("#### 📊 Skill Viability Matrix (Strategic Quadrant)")
                     fig = px.scatter(
@@ -125,11 +189,11 @@ if uploaded_file and gemini_key:
                         color="market_stage",
                         size=[32] * len(df),
                         labels={
-                            "growth_score": "Future Growth Potential (0 - 100)", 
-                            "ai_risk": "AI Disruption / Automation Risk (0 - 100)",
+                            "growth_score": "Verified Growth Potential (0 - 100)", 
+                            "ai_risk": "Verified AI Disruption Risk (0 - 100)",
                             "market_stage": "Market Phase"
                         },
-                        title="Skill Positioning (Bottom-Right = High Growth & Safe from AI)"
+                        title="Skill Positioning (Bottom-Right = High Growth & Defensible from AI)"
                     )
                     fig.update_traces(textposition='top center')
                     fig.update_layout(
@@ -139,19 +203,31 @@ if uploaded_file and gemini_key:
                     )
                     st.plotly_chart(fig, use_container_width=True)
 
-                # Right Column: Detailed Skill Breakdown
+                # Right Column: Explainable Rubric Breakdown
                 with col2:
-                    st.markdown("#### 🎯 Skill Trajectory Breakdown")
+                    st.markdown("#### 🎯 Explainable Score Breakdown")
                     for s in skills_data:
                         with st.expander(f"{s['name']} — [{s['market_stage']}]"):
                             st.write(f"📈 **Growth Potential:** `{s['growth_score']}/100`")
-                            st.write(f"🛡️ **AI Disruption Risk:** `{s['ai_risk']}/100`")
-                            st.write(f"💬 **Market Insight:** {s['reason']}")
+                            gb = s.get("growth_breakdown", {})
+                            st.caption("Formula: 40% Demand + 30% Ecosystem + 30% Salary")
+                            st.progress(gb.get("demand_trajectory", 50) / 100, text=f"Hiring Demand (40%): {gb.get('demand_trajectory', 50)}/100")
+                            st.progress(gb.get("ecosystem_alignment", 50) / 100, text=f"Ecosystem Alignment (30%): {gb.get('ecosystem_alignment', 50)}/100")
+                            st.progress(gb.get("salary_premium", 50) / 100, text=f"Salary Premium (30%): {gb.get('salary_premium', 50)}/100")
 
-                # Bottom Section: Recommended Upskilling
+                            st.write(f"🛡️ **AI Disruption Risk:** `{s['ai_risk']}/100`")
+                            ab = s.get("ai_risk_breakdown", {})
+                            st.caption("Formula: 40% Standardized + 40% Tools - 20% Judgment Barrier")
+                            st.progress(ab.get("task_standardization", 50) / 100, text=f"Task Standardization (40%): {ab.get('task_standardization', 50)}/100")
+                            st.progress(ab.get("ai_tool_maturity", 50) / 100, text=f"GenAI Tool Maturity (40%): {ab.get('ai_tool_maturity', 50)}/100")
+                            st.progress(ab.get("human_judgment_barrier", 50) / 100, text=f"Human Judgment Barrier (-20% buffer): {ab.get('human_judgment_barrier', 50)}/100")
+
+                            st.write(f"💬 **Rationale:** {s['reason']}")
+
+                # Bottom Section: Recommended Upskilling Pathways
                 st.divider()
-                st.markdown("#### 🌟 Recommended Upskilling Pathways")
-                st.caption("Strategic capabilities to acquire next to maximize your market premium:")
+                st.markdown("#### 🌟 Strategic Upskilling Pathways")
+                st.caption("Recommended complementary capabilities to acquire next to maximize market defensibility:")
                 recs = result.get("recommended_upskills", [])
                 cols = st.columns(len(recs))
                 for i, rec in enumerate(recs):
